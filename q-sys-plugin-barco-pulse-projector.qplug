@@ -6,7 +6,9 @@
   - The projector responds to source commands and queries with an error when it is off.
   - 'off', 'standby', 'eco' and 'ready' are all different levels of off. 
   - 'conditioning' is warming, 'deconditioning' is cooling
-  -- sending a WoL on power on, could probably check 'EcoEnable' and only send it if enabled.
+  - if you want to trigger actions like motorised screen controls from the power state be aware that it will send a 'ready' state temporarily as it warms up so you need to create logic to ignore any state changes between 'Warming' and 'On' 
+  - sending a WoL on power on if TCP is not connected, could probably check 'EcoEnable' and only send it if enabled.
+  - it takes several minutes to wake from eco mode so it is best to avoid unless absolutely necessary.
 ]]
 
 PluginInfo = {
@@ -215,6 +217,14 @@ function GetControls(props)
     PinStyle      = "Output"
   })
   table.insert(ctrls, {
+    Name          = "PowerState",
+    ControlType  = "Text",
+    PinStyle     = "Output",
+    UserPin      = true,
+    Count        = 1,
+    DefaultValue = ""
+  })
+  table.insert(ctrls, {
     Name          = "StandbyStatus",
     ControlType   = "Indicator",
     IndicatorType = "Led",
@@ -250,12 +260,20 @@ function GetControls(props)
   
   -- Panel Controls --
   table.insert(ctrls, {
-    Name          = "ShutterStatus",
+    Name          = "ShutterOpenStatus",
     ControlType   = "Indicator",
     IndicatorType = "Led",
     Count         = 1,
     UserPin       = true,
     PinStyle      = "Output"
+  })
+  table.insert(ctrls, {
+    Name          = "ShutterState",
+    ControlType  = "Text",
+    PinStyle     = "Output",
+    UserPin      = true,
+    Count        = 1,
+    DefaultValue = ""
   })
   table.insert(ctrls, {
     Name         = "Shutter",
@@ -299,6 +317,13 @@ function GetControls(props)
     Count        = InputCount,
     UserPin      = true,
     PinStyle     = "Both"
+  })
+  table.insert(ctrls, {
+    Name         = "InputLabels",
+    ControlType  = "Text",
+    Count        = InputCount,
+    UserPin      = true,
+    PinStyle     = "Output"
   })
   table.insert(ctrls, {
     Name          = "InputStatus",
@@ -348,11 +373,11 @@ function GetControlLayout(props)
       table.insert(graphics,{Type="Text",Text="Username",Position={15,85},Size={100,16},FontSize=14,HTextAlign="Right"})
       layout["Username"] = {PrettyName="Settings~Username",Style="Text",Color=colors.White,Position={120,85},Size={99,16},FontSize=12}
       table.insert(graphics,{Type="Text",Text="Requires login",Position={250,85},Size={100,16},FontSize=14,HTextAlign="Right"})
-      layout["RequiresAuthentication"] = {PrettyName="Settings~Requires login",Style="Led",Color=colors.White,Position={120,85},Size={16,16},FontSize=12}
+      layout["RequiresAuthentication"] = {PrettyName="Settings~Requires login",Style="Led", Color=colors.Blue, OffColor=colors.DarkRed, UnlinkOffColor=true, CornerRadius=6, Position={360,85},Size={16,16},FontSize=12}
       table.insert(graphics,{Type="Text",Text="Password",Position={15,110},Size={100,16},FontSize=14,HTextAlign="Right"})
       layout["Password"] = {PrettyName="Settings~Password",Style="Text",Color=colors.White,Position={120,110},Size={99,16},FontSize=12}
-      table.insert(graphics,{Type="Text",Text="Logged In",Position={15,110},Size={100,16},FontSize=14,HTextAlign="Right"})
-      layout["LoggedIn"] = {PrettyName="Settings~LoggedIn",Style="Led",Color=colors.White,Position={120,110},Size={16,16},FontSize=12}
+      table.insert(graphics,{Type="Text",Text="Logged In",Position={250,110},Size={100,16},FontSize=14,HTextAlign="Right"})
+      layout["LoggedIn"] = {PrettyName="Settings~LoggedIn",Style="Led", Color=colors.Blue, OffColor=colors.DarkRed, UnlinkOffColor=true, CornerRadius=6, Position={360,110},Size={16,16},FontSize=12}
       table.insert(graphics,{Type="Text",Text="MAC Address",Position={15,135},Size={100,16},FontSize=14,HTextAlign="Right"})
       layout["MACAddress"] = {PrettyName="Settings~MAC Address",Style="Text",Color=colors.White,Position={120,135},Size={99,16},FontSize=12}
     else
@@ -390,8 +415,8 @@ function GetControlLayout(props)
     table.insert(graphics,{Type="Text",Text="Off",Position={231,40},Size={71,14},FontSize=12,HTextAlign="Center",Color=colors.Text})
     layout["PowerOff"] = {PrettyName="Power~Off", Style="Button", Color=colors.Button, FontColor=colors.Red, FontSize=14, CornerRadius=2, Position={234,53}, Size={65,25} }
     --table.insert(graphics,{Type="Text",Text="Status",Position={12,40},Size={71,14},FontSize=12,HTextAlign="Center",Color=colors.Text})
-    layout["PowerStatus"] = {PrettyName="Power~Status", Style="LED", Color=colors.Blue, OffColor=colors.DarkRed, UnlinkOffColor=true, CornerRadius=6, Position={90,55}, Size={20,20} }
-    layout["PowerState"] = {PrettyName="Power~State", Style="Text", HTextAlign="Left", IsReadOnly=true, Color=colors.Transparent, StrokeWidth=0, FontSize=14, IsBold=true, FontColor=colors.Text, Position={120,55}, Size={255,16} }
+    layout["PowerStatus"] = {PrettyName="Power~Status", Style="LED", Color=colors.Blue, OffColor=colors.DarkRed, UnlinkOffColor=true, CornerRadius=6, Position={84,55}, Size={20,20} }
+    layout["PowerState"] = {PrettyName="Power~State", Style="Text", HTextAlign="Center", IsReadOnly=true, Color=colors.Transparent, StrokeWidth=0, FontSize=14, IsBold=true, FontColor=colors.Text, Position={104,58}, Size={127,16} }
     --Shutter
     table.insert(graphics,{Type="Header",Text="Shutter",Position={15,90},Size={285,14},FontSize=12,HTextAlign="Center",Color=colors.Header})
     table.insert(graphics,{Type="Text",Text="Open",Position={12,105},Size={71,14},FontSize=12,HTextAlign="Center",Color=colors.Text})
@@ -399,7 +424,8 @@ function GetControlLayout(props)
     table.insert(graphics,{Type="Text",Text="Close",Position={231,105},Size={71,14},FontSize=12,HTextAlign="Center",Color=colors.Text})
     layout["ShutterClose"] = {PrettyName="Shutter~Close", Style="Button", Color=colors.Button, FontColor=colors.Red, FontSize=14, CornerRadius=2, Position={234,118}, Size={65,25} }
     --table.insert(graphics,{Type="Text",Text="Status",Position={12,105},Size={71,14},FontSize=12,HTextAlign="Center",Color=colors.Text})
-    layout["ShutterStatus"] = {PrettyName="Shutter~Status", Style="LED", Color=colors.Blue, OffColor=colors.DarkRed, UnlinkOffColor=true, CornerRadius=6, Position={147,120}, Size={20,20} }
+    layout["ShutterOpenStatus"] = {PrettyName="Shutter~Open Status", Style="LED", Color=colors.Blue, OffColor=colors.DarkRed, UnlinkOffColor=true, CornerRadius=6, Position={84,120}, Size={20,20} }
+    layout["ShutterState"] = {PrettyName="Shutter~State", Style="Text", HTextAlign="Center", IsReadOnly=true, Color=colors.Transparent, StrokeWidth=0, FontSize=14, IsBold=true, FontColor=colors.Text, Position={104,123}, Size={127,16} }
     -- Inputs
     table.insert(graphics,{Type="Header",Text="Input",Position={15,155},Size={285,14},FontSize=12,HTextAlign="Center",Color=colors.Header})
     table.insert(graphics,{Type="Text",Text="Current Input",Position={12,174},Size={75,20},FontSize=12,HTextAlign="Right", VTextAlign="Middle", Color=colors.Text})
@@ -407,11 +433,11 @@ function GetControlLayout(props)
     local i,j=0,0
     for val,input in pairs(InputTypes) do
       if (i+(j*4)) < InputCount then
-        table.insert(graphics,{Type="Text",Text=input.Name,Position={12+(73*i),195+j*45},Size={71,22},FontSize=10,Color=colors.Text,HTextAlign="Center", VTextAlign="Bottom"})
+        layout["InputLabels "..(j*4+1+i)] = {PrettyName="Input~Label "..input.Name, Style="Text", HTextAlign="Center", IsReadOnly=true, Color=colors.Transparent, StrokeWidth=0, FontSize=10, FontColor=colors.Text, Position={12+(73*i),195+j*45},Size={71,22} }
         layout["InputButtons "..(j*4+1+i)] = {PrettyName="Input~"..input.Name, Style="Button", UnlinkOffColor=true, Color=colors.Blue, OffColor=colors.Button, FontColor=colors.White, FontSize=14, Position={15+(73*i), 215+j*45}, Size={65,25} }
         layout["InputStatus "..(j*4+1+i)] = {PrettyName="Input~Status "..input.Name, Style="LED", Color=colors.White, OffColor=colors.Transparent, UnlinkOffColor=true, StrokeWidth=0, Position={68+(73*i), 217+j*45}, Size={10,10}, ZOrder=-1000}
         i=i+1
-        if(i>3)then 
+        if(i>3)then
           j=j+1
           i=0
         end
@@ -581,6 +607,8 @@ if Controls then
   		if(state ~= "OK")then
   			Controls["PowerStatus"].Value = 0
   			Controls["ShutterOpenStatus"].Boolean = false
+  			Controls["PowerState"].String = ''
+  			Controls["ShutterState"].String = ''
   		end
   	end
   end
@@ -801,6 +829,7 @@ if Controls then
   
   	Controls["ShutterOpen"].EventHandler = function()
   		if DebugFunction then print("Shutter open Serial Handler Called") end
+  		Controls["ShutterState"].String = ''
     	local cmd = Commands["Shutter"]
       cmd.params.value ="Open"
   		Send( cmd )
@@ -1092,13 +1121,13 @@ if Controls then
   
           if msg.error.message:match('transitioning to off') then
             print('COOLING')
-            Controls.PowerState.String   = 'cooling'
-            Controls.PowerStatus.String  = 'cooling'
+            Controls.PowerState.String   = 'Cooling'
+            Controls.PowerStatus.String  = 'Cooling'
             Controls.PowerStatus.Boolean = false
           elseif msg.error.message:match('transitioning to ') then -- 'ready' or 'conditioing'
             print('WARMING')
-            Controls.PowerState.String   = 'warming'
-            Controls.PowerStatus.String  = 'warming'
+            Controls.PowerState.String   = 'Warming'
+            Controls.PowerStatus.String  = 'Warming'
             Controls.PowerStatus.Boolean = true
           end
   
@@ -1149,17 +1178,19 @@ if Controls then
             end
             -- special cases
             if     k=='Status' then 
-              Controls.PowerState.String  = result 
-              Controls.PowerStatus.String = result 
-              Controls.PowerStatus.Boolean = result=='on' 
+              Controls.PowerState.String  = result:gsub("^%l", string.upper) -- capitalise first letter
+              Controls.PowerStatus.String = result:gsub("^%l", string.upper) -- capitalise first letter
+              Controls.PowerStatus.Boolean = result=='on'
             elseif k=='Input'  then 
               for i1,v1 in pairs(InputTypes) do 
                 if Controls.InputButtons[i1] then Controls.InputButtons[i1].Boolean = v1.Value == result end
               end
-            elseif k=='Shutter' then Controls.ShutterOpenStatus.Boolean = result=='Open'
+            elseif k=='Shutter' then 
+  						Controls.ShutterOpenStatus.Boolean = result=='Open'
+  						Controls.ShutterState.String = result:gsub("^%l", string.upper) -- capitalise first letter
             end
           elseif type(result)=='boolean' then
-            if Controls[k] then 
+            if Controls[k] then
               if DebugFunction then print('Controls['..k..'].Boolean = '..tostring(result)) end
               Controls[k].Boolean = result
             end
@@ -1172,10 +1203,10 @@ if Controls then
             if DebugFunction then print('Controls['..k..'] found: '..type(result)) end
             if     property == Properties[k] then -- k=='HDMIProperties', Properties[k]=='image.connector.hdmi.detectedsignal'
               local input = Properties[k]:match('image%.connector%.([^.]+)%.detectedsignal') -- input == 'hdmi'
-              for i,v in ipairs(InputTypes) do 
+              for i,v in ipairs(InputTypes) do
                 if v.Value:lower()==input then
                   if DebugFunction then print('Controls[InputStatus]['..i..'].Value = '..tostring(result.active)) end
-                  Controls.InputStatus[i].Boolean = result.active 
+                  Controls.InputStatus[i].Boolean = result.active
                 break end
               end
             end
@@ -1196,7 +1227,10 @@ if Controls then
           if DebugFunction then print('msg['..msg.id..'] extracted: '..rapidjson.encode(SentMessages[msg.id])) end
           -- authentication response
           if SentMessages[msg.id].method == Commands.Login.method then -- {"id":2,"method":"authenticate","params":{"password":"default1234","username":"admin"},"jsonrpc":"2.0"}
-            Controls.LoggedIn.Boolean = msg.result --{"jsonrpc":"2.0","id":2,"result":true}
+  					if Controls.RequiresAuthentication.Boolean and not Controls.LoggedIn.Boolean and msg.result then
+  						PollQueueCurrent = LoadPollQueue() -- need to re-send all queries because some may have failed due to user permission
+  					end
+  					Controls.LoggedIn.Boolean = msg.result --{"jsonrpc":"2.0","id":2,"result":true}
           -- property response
           --{"jsonrpc":"2.0","method":"property.changed","params":{"property":[{"system.state":"ready"}]}}
           elseif SentMessages[msg.id].method ~= 'property.subscribe' and SentMessages[msg.id].params.property then --'network.device.lan.hwaddress'
@@ -1215,7 +1249,7 @@ if Controls then
                 for i,name in ipairs(msg.result) do
                   table.insert(InputTypes, { Name=name, Value=name})
                   table.insert(choices, name)
-                  Controls['InputButtons'][i].Legend = name
+                  Controls['InputLabels'][i].Legend = name
                 end
                 Controls.Input.Choices = choices
                 InputCount = #msg.result
@@ -1245,6 +1279,7 @@ if Controls then
   	PowerupTimer:Stop()
   	CommandQueue = {}
   	Controls["PowerStatus"].Value = 0
+  	Controls["PowerState"].String = ''
   	Send( Commands["PowerOff"], true )
   end
   
@@ -1256,6 +1291,7 @@ if Controls then
   Controls["ShutterClose"].EventHandler = function()
   	if DebugFunction then print("PanelOff Handler Called") end
   	Controls["ShutterOpenStatus"].Boolean = false
+  	Controls["ShutterState"].String = ''
     local cmd = Commands["Shutter"]
     cmd.params.value ="Closed"
     Send( cmd )
@@ -1286,14 +1322,8 @@ if Controls then
   	if DebugFunction then print("Heartbeat Event Handler Called") end
   	--if DebugFunction and not DebugTx then print("Heartbeat Event Handler Called") end
     local cmd = { params={property=Properties["Status"]}, method='property.get' } 
-  	Send( cmd ) -- using this as a KeepAlive, this should already be handled by a subscription
-  	--[[
-      if Controls["PowerStatus"].Value==1 then
-  		Send( PropertiesToGet["ShutterOpenStatus"] )
-  		Send( PropertiesToGet["InputStatus"] )
-  	end
-    ]]
-  end 
+  	Send( cmd ) -- using this as a KeepAlive, this is already be handled by a subscription
+  end
   
   -- PowerOn command requires spamming the interface 3 times at 2 second intervals
   PowerupTimer.EventHandler = function()

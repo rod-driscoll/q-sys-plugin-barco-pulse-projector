@@ -26,11 +26,11 @@ if CurrentPage == "Setup" then
     table.insert(graphics,{Type="Text",Text="Username",Position={15,85},Size={100,16},FontSize=14,HTextAlign="Right"})
     layout["Username"] = {PrettyName="Settings~Username",Style="Text",Color=colors.White,Position={120,85},Size={99,16},FontSize=12}
     table.insert(graphics,{Type="Text",Text="Requires login",Position={250,85},Size={100,16},FontSize=14,HTextAlign="Right"})
-    layout["RequiresAuthentication"] = {PrettyName="Settings~Requires login",Style="Led",Color=colors.White,Position={120,85},Size={16,16},FontSize=12}
+    layout["RequiresAuthentication"] = {PrettyName="Settings~Requires login",Style="Led", Color=colors.Blue, OffColor=colors.DarkRed, UnlinkOffColor=true, CornerRadius=6, Position={360,85},Size={16,16},FontSize=12}
     table.insert(graphics,{Type="Text",Text="Password",Position={15,110},Size={100,16},FontSize=14,HTextAlign="Right"})
     layout["Password"] = {PrettyName="Settings~Password",Style="Text",Color=colors.White,Position={120,110},Size={99,16},FontSize=12}
-    table.insert(graphics,{Type="Text",Text="Logged In",Position={15,110},Size={100,16},FontSize=14,HTextAlign="Right"})
-    layout["LoggedIn"] = {PrettyName="Settings~LoggedIn",Style="Led",Color=colors.White,Position={120,110},Size={16,16},FontSize=12}
+    table.insert(graphics,{Type="Text",Text="Logged In",Position={250,110},Size={100,16},FontSize=14,HTextAlign="Right"})
+    layout["LoggedIn"] = {PrettyName="Settings~LoggedIn",Style="Led", Color=colors.Blue, OffColor=colors.DarkRed, UnlinkOffColor=true, CornerRadius=6, Position={360,110},Size={16,16},FontSize=12}
     table.insert(graphics,{Type="Text",Text="MAC Address",Position={15,135},Size={100,16},FontSize=14,HTextAlign="Right"})
     layout["MACAddress"] = {PrettyName="Settings~MAC Address",Style="Text",Color=colors.White,Position={120,135},Size={99,16},FontSize=12}
   else
@@ -68,8 +68,8 @@ elseif CurrentPage == "Control" then
   table.insert(graphics,{Type="Text",Text="Off",Position={231,40},Size={71,14},FontSize=12,HTextAlign="Center",Color=colors.Text})
   layout["PowerOff"] = {PrettyName="Power~Off", Style="Button", Color=colors.Button, FontColor=colors.Red, FontSize=14, CornerRadius=2, Position={234,53}, Size={65,25} }
   --table.insert(graphics,{Type="Text",Text="Status",Position={12,40},Size={71,14},FontSize=12,HTextAlign="Center",Color=colors.Text})
-  layout["PowerStatus"] = {PrettyName="Power~Status", Style="LED", Color=colors.Blue, OffColor=colors.DarkRed, UnlinkOffColor=true, CornerRadius=6, Position={90,55}, Size={20,20} }
-  layout["PowerState"] = {PrettyName="Power~State", Style="Text", HTextAlign="Left", IsReadOnly=true, Color=colors.Transparent, StrokeWidth=0, FontSize=14, IsBold=true, FontColor=colors.Text, Position={120,55}, Size={255,16} }
+  layout["PowerStatus"] = {PrettyName="Power~Status", Style="LED", Color=colors.Blue, OffColor=colors.DarkRed, UnlinkOffColor=true, CornerRadius=6, Position={84,55}, Size={20,20} }
+  layout["PowerState"] = {PrettyName="Power~State", Style="Text", HTextAlign="Center", IsReadOnly=true, Color=colors.Transparent, StrokeWidth=0, FontSize=14, IsBold=true, FontColor=colors.Text, Position={104,58}, Size={127,16} }
   --Shutter
   table.insert(graphics,{Type="Header",Text="Shutter",Position={15,90},Size={285,14},FontSize=12,HTextAlign="Center",Color=colors.Header})
   table.insert(graphics,{Type="Text",Text="Open",Position={12,105},Size={71,14},FontSize=12,HTextAlign="Center",Color=colors.Text})
@@ -77,7 +77,8 @@ elseif CurrentPage == "Control" then
   table.insert(graphics,{Type="Text",Text="Close",Position={231,105},Size={71,14},FontSize=12,HTextAlign="Center",Color=colors.Text})
   layout["ShutterClose"] = {PrettyName="Shutter~Close", Style="Button", Color=colors.Button, FontColor=colors.Red, FontSize=14, CornerRadius=2, Position={234,118}, Size={65,25} }
   --table.insert(graphics,{Type="Text",Text="Status",Position={12,105},Size={71,14},FontSize=12,HTextAlign="Center",Color=colors.Text})
-  layout["ShutterStatus"] = {PrettyName="Shutter~Status", Style="LED", Color=colors.Blue, OffColor=colors.DarkRed, UnlinkOffColor=true, CornerRadius=6, Position={147,120}, Size={20,20} }
+  layout["ShutterOpenStatus"] = {PrettyName="Shutter~Open Status", Style="LED", Color=colors.Blue, OffColor=colors.DarkRed, UnlinkOffColor=true, CornerRadius=6, Position={84,120}, Size={20,20} }
+  layout["ShutterState"] = {PrettyName="Shutter~State", Style="Text", HTextAlign="Center", IsReadOnly=true, Color=colors.Transparent, StrokeWidth=0, FontSize=14, IsBold=true, FontColor=colors.Text, Position={104,123}, Size={127,16} }
   -- Inputs
   table.insert(graphics,{Type="Header",Text="Input",Position={15,155},Size={285,14},FontSize=12,HTextAlign="Center",Color=colors.Header})
   table.insert(graphics,{Type="Text",Text="Current Input",Position={12,174},Size={75,20},FontSize=12,HTextAlign="Right", VTextAlign="Middle", Color=colors.Text})
@@ -85,11 +86,11 @@ elseif CurrentPage == "Control" then
   local i,j=0,0
   for val,input in pairs(InputTypes) do
     if (i+(j*4)) < InputCount then
-      table.insert(graphics,{Type="Text",Text=input.Name,Position={12+(73*i),195+j*45},Size={71,22},FontSize=10,Color=colors.Text,HTextAlign="Center", VTextAlign="Bottom"})
+      layout["InputLabels "..(j*4+1+i)] = {PrettyName="Input~Label "..input.Name, Style="Text", HTextAlign="Center", IsReadOnly=true, Color=colors.Transparent, StrokeWidth=0, FontSize=10, FontColor=colors.Text, Position={12+(73*i),195+j*45},Size={71,22} }
       layout["InputButtons "..(j*4+1+i)] = {PrettyName="Input~"..input.Name, Style="Button", UnlinkOffColor=true, Color=colors.Blue, OffColor=colors.Button, FontColor=colors.White, FontSize=14, Position={15+(73*i), 215+j*45}, Size={65,25} }
       layout["InputStatus "..(j*4+1+i)] = {PrettyName="Input~Status "..input.Name, Style="LED", Color=colors.White, OffColor=colors.Transparent, UnlinkOffColor=true, StrokeWidth=0, Position={68+(73*i), 217+j*45}, Size={10,10}, ZOrder=-1000}
       i=i+1
-      if(i>3)then 
+      if(i>3)then
         j=j+1
         i=0
       end

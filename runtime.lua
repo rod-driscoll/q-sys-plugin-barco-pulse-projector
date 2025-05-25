@@ -154,6 +154,8 @@ function ReportStatus(state,msg)
 		if(state ~= "OK")then
 			Controls["PowerStatus"].Value = 0
 			Controls["ShutterOpenStatus"].Boolean = false
+			Controls["PowerState"].String = ''
+			Controls["ShutterState"].String = ''
 		end
 	end
 end
@@ -374,6 +376,7 @@ if ConnectionType == "Serial" then
 
 	Controls["ShutterOpen"].EventHandler = function()
 		if DebugFunction then print("Shutter open Serial Handler Called") end
+		Controls["ShutterState"].String = ''
   	local cmd = Commands["Shutter"]
     cmd.params.value ="Open"
 		Send( cmd )
@@ -665,13 +668,13 @@ function ParseResponse(str)
 
         if msg.error.message:match('transitioning to off') then
           print('COOLING')
-          Controls.PowerState.String   = 'cooling'
-          Controls.PowerStatus.String  = 'cooling'
+          Controls.PowerState.String   = 'Cooling'
+          Controls.PowerStatus.String  = 'Cooling'
           Controls.PowerStatus.Boolean = false
         elseif msg.error.message:match('transitioning to ') then -- 'ready' or 'conditioing'
           print('WARMING')
-          Controls.PowerState.String   = 'warming'
-          Controls.PowerStatus.String  = 'warming'
+          Controls.PowerState.String   = 'Warming'
+          Controls.PowerStatus.String  = 'Warming'
           Controls.PowerStatus.Boolean = true
         end
 
@@ -722,17 +725,19 @@ function HandleResponse(msg)
           end
           -- special cases
           if     k=='Status' then 
-            Controls.PowerState.String  = result 
-            Controls.PowerStatus.String = result 
-            Controls.PowerStatus.Boolean = result=='on' 
+            Controls.PowerState.String  = result:gsub("^%l", string.upper) -- capitalise first letter
+            Controls.PowerStatus.String = result:gsub("^%l", string.upper) -- capitalise first letter
+            Controls.PowerStatus.Boolean = result=='on'
           elseif k=='Input'  then 
             for i1,v1 in pairs(InputTypes) do 
               if Controls.InputButtons[i1] then Controls.InputButtons[i1].Boolean = v1.Value == result end
             end
-          elseif k=='Shutter' then Controls.ShutterOpenStatus.Boolean = result=='Open'
+          elseif k=='Shutter' then 
+						Controls.ShutterOpenStatus.Boolean = result=='Open'
+						Controls.ShutterState.String = result:gsub("^%l", string.upper) -- capitalise first letter
           end
         elseif type(result)=='boolean' then
-          if Controls[k] then 
+          if Controls[k] then
             if DebugFunction then print('Controls['..k..'].Boolean = '..tostring(result)) end
             Controls[k].Boolean = result
           end
@@ -745,10 +750,10 @@ function HandleResponse(msg)
           if DebugFunction then print('Controls['..k..'] found: '..type(result)) end
           if     property == Properties[k] then -- k=='HDMIProperties', Properties[k]=='image.connector.hdmi.detectedsignal'
             local input = Properties[k]:match('image%.connector%.([^.]+)%.detectedsignal') -- input == 'hdmi'
-            for i,v in ipairs(InputTypes) do 
+            for i,v in ipairs(InputTypes) do
               if v.Value:lower()==input then
                 if DebugFunction then print('Controls[InputStatus]['..i..'].Value = '..tostring(result.active)) end
-                Controls.InputStatus[i].Boolean = result.active 
+                Controls.InputStatus[i].Boolean = result.active
               break end
             end
           end
@@ -769,7 +774,10 @@ function HandleResponse(msg)
         if DebugFunction then print('msg['..msg.id..'] extracted: '..rapidjson.encode(SentMessages[msg.id])) end
         -- authentication response
         if SentMessages[msg.id].method == Commands.Login.method then -- {"id":2,"method":"authenticate","params":{"password":"default1234","username":"admin"},"jsonrpc":"2.0"}
-          Controls.LoggedIn.Boolean = msg.result --{"jsonrpc":"2.0","id":2,"result":true}
+					if Controls.RequiresAuthentication.Boolean and not Controls.LoggedIn.Boolean and msg.result then
+						PollQueueCurrent = LoadPollQueue() -- need to re-send all queries because some may have failed due to user permission
+					end
+					Controls.LoggedIn.Boolean = msg.result --{"jsonrpc":"2.0","id":2,"result":true}
         -- property response
         --{"jsonrpc":"2.0","method":"property.changed","params":{"property":[{"system.state":"ready"}]}}
         elseif SentMessages[msg.id].method ~= 'property.subscribe' and SentMessages[msg.id].params.property then --'network.device.lan.hwaddress'
@@ -788,7 +796,7 @@ function HandleResponse(msg)
               for i,name in ipairs(msg.result) do
                 table.insert(InputTypes, { Name=name, Value=name})
                 table.insert(choices, name)
-                Controls['InputButtons'][i].Legend = name
+                Controls['InputLabels'][i].Legend = name
               end
               Controls.Input.Choices = choices
               InputCount = #msg.result
@@ -818,6 +826,7 @@ function SetPowerOff()
 	PowerupTimer:Stop()
 	CommandQueue = {}
 	Controls["PowerStatus"].Value = 0
+	Controls["PowerState"].String = ''
 	Send( Commands["PowerOff"], true )
 end
 
@@ -829,6 +838,7 @@ Controls["PowerOff"].EventHandler = SetPowerOff
 Controls["ShutterClose"].EventHandler = function()
 	if DebugFunction then print("PanelOff Handler Called") end
 	Controls["ShutterOpenStatus"].Boolean = false
+	Controls["ShutterState"].String = ''
   local cmd = Commands["Shutter"]
   cmd.params.value ="Closed"
   Send( cmd )
@@ -859,14 +869,8 @@ Heartbeat.EventHandler = function()
 	if DebugFunction then print("Heartbeat Event Handler Called") end
 	--if DebugFunction and not DebugTx then print("Heartbeat Event Handler Called") end
   local cmd = { params={property=Properties["Status"]}, method='property.get' } 
-	Send( cmd ) -- using this as a KeepAlive, this should already be handled by a subscription
-	--[[
-    if Controls["PowerStatus"].Value==1 then
-		Send( PropertiesToGet["ShutterOpenStatus"] )
-		Send( PropertiesToGet["InputStatus"] )
-	end
-  ]]
-end 
+	Send( cmd ) -- using this as a KeepAlive, this is already be handled by a subscription
+end
 
 -- PowerOn command requires spamming the interface 3 times at 2 second intervals
 PowerupTimer.EventHandler = function()

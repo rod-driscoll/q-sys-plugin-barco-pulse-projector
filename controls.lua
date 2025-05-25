@@ -129,6 +129,14 @@ table.insert(ctrls, {
   PinStyle      = "Output"
 })
 table.insert(ctrls, {
+  Name          = "PowerState",
+  ControlType  = "Text",
+  PinStyle     = "Output",
+  UserPin      = true,
+  Count        = 1,
+  DefaultValue = ""
+})
+table.insert(ctrls, {
   Name          = "StandbyStatus",
   ControlType   = "Indicator",
   IndicatorType = "Led",
@@ -164,12 +172,20 @@ table.insert(ctrls, {
 
 -- Panel Controls --
 table.insert(ctrls, {
-  Name          = "ShutterStatus",
+  Name          = "ShutterOpenStatus",
   ControlType   = "Indicator",
   IndicatorType = "Led",
   Count         = 1,
   UserPin       = true,
   PinStyle      = "Output"
+})
+table.insert(ctrls, {
+  Name          = "ShutterState",
+  ControlType  = "Text",
+  PinStyle     = "Output",
+  UserPin      = true,
+  Count        = 1,
+  DefaultValue = ""
 })
 table.insert(ctrls, {
   Name         = "Shutter",
@@ -213,6 +229,13 @@ table.insert(ctrls, {
   Count        = InputCount,
   UserPin      = true,
   PinStyle     = "Both"
+})
+table.insert(ctrls, {
+  Name         = "InputLabels",
+  ControlType  = "Text",
+  Count        = InputCount,
+  UserPin      = true,
+  PinStyle     = "Output"
 })
 table.insert(ctrls, {
   Name          = "InputStatus",
