@@ -1,7 +1,8 @@
 --[[
   20250521 v1.0 Rod Driscoll<rod@theavitgroup.com.au>
   Barco Pulse projector control.
-
+  Source code location: <https://github.com/rod-driscoll/q-sys-plugin-barco-pulse-projector>
+  
   Developer notes:
   - The projector responds to source commands and queries with an error when it is off.
   - 'off', 'standby', 'eco' and 'ready' are all different levels of off. 

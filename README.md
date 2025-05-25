@@ -9,7 +9,7 @@ Platform: Q-Sys
 Source code location: <https://github.com/rod-driscoll/q-sys-plugin-barco-pulse-projector>
 
 ![Control tab](https://github.com/rod-driscoll/q-sys-plugin-barco-pulse-projector/blob/master/content/control.png)\
-![Setup tab](https://github.com/rod-driscoll/q-sys-plugin-barco-pulse-projector/blob/master/content/setup.png)\
+![Setup tab](https://github.com/rod-driscoll/q-sys-plugin-barco-pulse-projector/blob/master/content/setup.png)
 
 ## Deploying code
 
